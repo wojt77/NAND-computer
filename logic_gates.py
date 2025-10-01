@@ -1,5 +1,5 @@
 #NAND gate using python not logical operator. 
-# The NAND-gate is the building block for all further chips in this file
+# The NAND-gate is the fundamental building block for all further logic gates/chips in this file
 def NAND(a, b):
     return not (a and b)
 
@@ -24,8 +24,8 @@ def dmux(inp, sel):
     return a, b
 
 def NOT16(inp):
-    output = inp
-    for i, pin in enumerate(output):
+    output = [False]*len(inp)
+    for i, pin in enumerate(inp):
         output[i] = NOT(pin)
     return(output)
 
@@ -44,7 +44,7 @@ def OR16(inp_a,inp_b):
 def MUX16(inp_a,inp_b,sel):
     output = [False]*len(inp_b)
     for i in range(0,len(inp_b)):
-        output[i] = OR(inp_a[i],inp_b[i],sel[i])
+        output[i] = mux(inp_a[i],inp_b[i],sel)
     return(output)
 
 def OR8Way(inp):
@@ -117,3 +117,59 @@ def DMUX8way(inp, sel):
     h = AND(top1_1, sel[2])
 
     return a, b, c, d, e, f, g, h
+
+
+def HalfAdder(a, b):
+    sum = XOR(a,b)
+    carry = AND(a,b)
+    return sum,carry
+
+def FullAdder(a, b, c):
+    par_sum, carry1 = HalfAdder(a, b)
+    sum, carry2 = HalfAdder(par_sum, c)
+    carry = OR(carry1, carry2)
+
+    return sum, carry
+
+def Add16(inp_a,inp_b):
+    output = [False]*len(inp_b)
+    output[0], carry = HalfAdder(inp_a[0],inp_b[0])
+    for i in range(1,len(inp_b)):
+        output[i], carry = FullAdder(inp_a[i],inp_b[i],carry)
+    return(output)
+
+def Inc16(inp):
+    one = [False] * 16
+    one[0] = True
+    output = Add16(inp,one)
+    return output
+
+
+#arithmetic logic unit of CPU, based on HACK-computer in:
+#The Elements of Computing Systems: Building a Modern Computer from First Principles.
+def ALU(x, y, zx, nx, zy, ny, f, no):
+    x1 = MUX16(x, [False]*16, zx)
+    notx1 = NOT16(x1)
+    x2 = MUX16(x1, notx1, nx)
+
+    y1 = MUX16(y, [False]*16, zy)
+    noty1 = NOT16(y1)
+    y2 = MUX16(y1, noty1, ny)
+
+    xAdd16y = Add16(x2, y2)
+    xAnd16y = AND16(x2, y2)
+
+    preout = MUX16(xAnd16y, xAdd16y, f)
+    notpreout = NOT16(preout)
+    out = MUX16(preout, notpreout, no)
+
+    zr0 = OR8Way(out[0:8])
+    zr1 = OR8Way(out[8:16])
+    zr2 = OR(zr0, zr1)
+    zr = NOT(zr2)
+
+    ng = out[15]
+
+    return out, zr, ng
+
+
